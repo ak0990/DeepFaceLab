@@ -62,6 +62,10 @@ class Devices(object):
 
     def get_devices_from_index_list(self, idx_list):
         result = []
+        # Convert comma-separated string into list of integers
+        if type(idx_list) == type(''):
+            idx_list = idx_list.split(',')
+            idx_list = [int(x) for x in idx_list]
         for device in self.devices:
             if device.index in idx_list:
                 result += [device]

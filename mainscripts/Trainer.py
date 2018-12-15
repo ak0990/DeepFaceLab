@@ -156,6 +156,7 @@ def trainerThread (s2c, c2s, e,
                             io.log_info ('Reached target iteration.')
                             model_save()
                             is_reached_goal = True
+                            i = -1
                             io.log_info ('You can use preview now.')
 
                 if not is_reached_goal and (time.time() - last_save_time) >= save_interval_min*60:
@@ -166,6 +167,7 @@ def trainerThread (s2c, c2s, e,
                 if i==0:
                     if is_reached_goal:
                         model.pass_one_iter()
+                        i = -1
                     send_preview()
 
                 if debug:

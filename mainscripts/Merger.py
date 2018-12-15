@@ -15,6 +15,15 @@ from DFLIMG import DFLIMG
 from facelib import FaceEnhancer, FaceType, LandmarksProcessor, XSegNet
 from merger import FrameInfo, MergerConfig, InteractiveMergerSubprocessor
 
+def get_uncompleted_input_files(input_path, output_path):
+    input_image_paths = pathex.get_image_paths(input_path)
+    output_image_paths = pathex.get_image_paths(output_path)
+    start_index = len(output_image_paths) + 1
+
+    output_files = [Path(o).name for o in output_image_paths]
+    result = [i for i in input_image_paths if Path(i).name not in output_files]
+    return result
+
 def main (model_class_name=None,
           saved_models_path=None,
           training_data_src_path=None,
@@ -71,8 +80,7 @@ def main (model_class_name=None,
         if not is_interactive:
             cfg.ask_settings()
 
-        input_path_image_paths = pathex.get_image_paths(input_path)
-
+        input_path_image_paths = get_uncompleted_input_files(input_path, output_path)
         if cfg.type == MergerConfig.TYPE_MASKED:
             if not aligned_path.exists():
                 io.log_err('Aligned directory not found. Please ensure it exists.')
