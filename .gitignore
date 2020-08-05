@@ -4,5 +4,6 @@
 !*.txt
 !*.jpg
 !requirements*
+!utils*
 !Dockerfile*
 !*.sh

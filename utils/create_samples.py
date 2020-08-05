@@ -73,7 +73,7 @@ def get_aligned_img_list(input_path):
     #img_list = sorted(img_list, key=operator.itemgetter(1))
     return img_list
 
-def create_samples(source_dir, merge_dir, source_img_list, merge_img_list, sample_count):
+def setup_dirs(source_dir, merge_dir):
     source_sample_dir = os.path.join(source_dir, "source_samples")
     merge_sample_dir = os.path.join(merge_dir, "merge_samples")
 
@@ -93,6 +93,11 @@ def create_samples(source_dir, merge_dir, source_img_list, merge_img_list, sampl
     except:
         print("Error making directories")
         sys.exit(1)
+
+
+def create_samples(source_dir, merge_dir, source_img_list, merge_img_list, sample_count):
+    source_sample_dir = os.path.join(source_dir, "source_samples")
+    merge_sample_dir = os.path.join(merge_dir, "merge_samples")
 
     faces_total = len(merge_img_list)
     faces_mod = int(faces_total / sample_count)
@@ -118,4 +123,5 @@ if __name__ == "__main__":
 
     source_img_list = get_img_list(source_dir)
     merge_img_list = get_aligned_img_list(merge_dir)
+    setup_dirs(source_dir, merge_dir)
     create_samples(source_dir, merge_dir, source_img_list, merge_img_list, 50)

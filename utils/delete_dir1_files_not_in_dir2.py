@@ -76,8 +76,6 @@ def get_aligned_img_list(input_path):
     return img_list
 
 def remove_metadata_not_in_plain(plain_img_list, metadata_img_list):
-    re_plain = re.compile(r'_plain')
-    re_metadata = re.compile(r'_[0-9]+')
     re_jpg = re.compile(r'jpg')
 
     #print("Count plain: %s -- Count metadata: %s" %(len(plain_img_list), len(metadata_img_list)))
@@ -90,11 +88,13 @@ def remove_metadata_not_in_plain(plain_img_list, metadata_img_list):
 
     print("Formatting plain filenames")
     plain_img_list_formatted = []
+    re_plain = re.compile(r'_plain')
     for plain_img in plain_img_list:
         #plain_img_trimmed = os.path.basename(re_plain.sub('', plain_img))
         plain_img_trimmed = os.path.basename(re_jpg.sub('png', plain_img))
         plain_img_list_formatted.append(plain_img_trimmed)
 
+    re_metadata = re.compile(r'_[0-9]{1,2}\.')
     pbar = tqdm(metadata_img_list)
     for metadata_img in pbar:
         metadata_filename = Path(metadata_img[0]) # could be number.png or number_index.png
@@ -110,16 +110,14 @@ def remove_metadata_not_in_plain(plain_img_list, metadata_img_list):
             os.remove(metadata_filename)
 
 def remove_plain_not_in_metadata(plain_img_list, metadata_img_list):
-    re_plain = re.compile(r'_plain')
-    re_metadata = re.compile(r'_[0-9]+\.')
-    re_source_name_format = re.compile(r'[0-9]+\.')
-    re_metadata_name_format = re.compile(r'[0-9]+_*[0-9]\.')
 
     print("Validating filenames")
     validation = True
+    re_source_name_format = re.compile(r'[0-9]+\.')
+    re_metadata_name_format = re.compile(r'[0-9]+_*[0-9]\.')
     for metadata_img in metadata_img_list:
-        metadata_source_filename = metadata_img[1]
         metadata_filename = metadata_img[0]
+        metadata_source_filename = metadata_img[1]
         if not re_source_name_format.search(metadata_source_filename):
             print("Bad source name format - skipping: %s" %metadata_source_filename)
             validation = False
@@ -133,15 +131,23 @@ def remove_plain_not_in_metadata(plain_img_list, metadata_img_list):
 
     print("Formatting metadata filenames")
     metadata_img_list_formatted = []
+    re_metadata = re.compile(r'_[0-9]{1,2}\.')
     for metadata_img in metadata_img_list:
+        #pprint(metadata_img)
         metadata_filename = Path(metadata_img[0])
         metadata_orig = metadata_img[1]
-        metadata_trimmed = re_metadata.sub('.', metadata_orig)
-        metadata_trimmed = Path(metadata_trimmed).stem
+        # Trim off the file extension
+        metadata_trimmed = Path(metadata_orig).stem
+        # Remove face index, which is the last 1 or 2 digits after the last underscore 
+        metadata_trimmed = re_metadata.sub('.', metadata_trimmed)
+        
         metadata_img_list_formatted.append(metadata_trimmed)
 
+    print("Final metadata_trimmed: %s" %metadata_trimmed)
     print("Searching for files to remove")
     pbar = tqdm(plain_img_list)
+    count = 0
+    re_plain = re.compile(r'_plain')
     for plain_img in pbar:
         found = False
         plain_img_trimmed = os.path.basename(re_plain.sub('', plain_img))
@@ -149,10 +155,13 @@ def remove_plain_not_in_metadata(plain_img_list, metadata_img_list):
         if plain_img_trimmed in metadata_img_list_formatted:
                 found = True
         else:
-            #print("NOMATCH plain: %-40s # metadata: %-40s # Orig: %s" %(plain_img_trimmed, metadata_trimmed, metadata_orig))
+            #print("\nNOMATCH plain: %-20s # metadata: %-20s # Orig: %s" %(plain_img_trimmed, metadata_trimmed, metadata_orig))
             #print("REMOVING plain: %-15s " %(plain_img))
             pbar.set_description("Removed: %s" %plain_img)
+            count += 1
             os.remove(plain_img)
+
+    print("Removed files: %s" %count)
 
 def usage():
     print("Usage: %s metadata_img_path plain_img_path delete_target" %(sys.argv[0]))

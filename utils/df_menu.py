@@ -37,7 +37,6 @@ class Menu(object):
                 ("extract_frames",                     "Extract frames from video"),
                 ("detect_faces",                       "Detect Faces"),
                 ("f2merge_menu",                       "Faces to Merge Menu", True),
-                ("copy_f2merge_to_f2train",            "Copy f2merge to f2train"),
                 ("f2train_menu",                       "Faces to Train Menu", True),
                 ("xseg_menu",                          "XSeg Menu", True),
                 ("train_menu",                         "Train Menu", True),
@@ -60,10 +59,12 @@ class Menu(object):
             ]
         if menu_name == 'f2train':
             self.options = [
+                ("copy_f2merge_to_f2train",            "Copy f2merge to f2train"),
                 ("f2train_separate_by_subdirs",        "Separate by subdirs"),
                 ("f2train_sort_black_pixels",          "Sort by black pixels"),
                 ("f2train_sort_brightness",            "      - brightness"),
-                ("f2train_sort_absdiff",               "      - absolute diff"),
+                ("f2train_sort_absdiff",               "      - absolute diff (very slow)"),
+                ("f2train_sort_rect_size",             "      - rect size"),
                 ("f2train_sort_histogram",             "      - histogram"),
                 #   MANAUL delete bad training faces
                 ("f2train_restore_orig_filenames",     "Restore original filenames"),
@@ -73,7 +74,7 @@ class Menu(object):
                 #   MANAUL delete bad debug matches
                 ("delete_train_not_in_debug",          "Delete train not in debug"),
                 ("f2train_metadata_save",              "Save metadata   - SRC ONLY"),
-                ("f2train_enhance",                    "AI Enhance      - SRC ONLY"),
+                #("f2train_enhance",                    "AI Enhance      - SRC ONLY"),
                 ("f2train_metadata_restore",           "Restore metdata - SRC ONLY"),
                 ("pack_f2train",                       "f2train Pack"),
                 ("unpack_f2train",                     "f2train Unpack"),
@@ -81,11 +82,14 @@ class Menu(object):
             ]
         if menu_name == 'xseg':
             self.options = [
+                ("copy_pretrained_xseg_model",         "Copy Pre-trained XSeg model"),
+                ("xseg_apply_f2train_dst",             "Apply XSeg Model to f2train dest"),
                 ("xseg_edit",                          "Edit XSeg Mask on f2train"),
                 ("xseg_train",                         "Train XSeg Model"),
-                ("xseg_apply_f2train",                 "Apply XSeg Model to f2train - Only if using BG/FG powers to train"),
-                ("xseg_apply_f2merge",                 "Apply XSeg Model to f2merge - Overwrites face detect masks"),
-                ("xseg_fetch",                         "Copy f2merged images that contain XSeg Polys"),
+                ("xseg_apply_f2train_dst",             "Apply XSeg Model to f2train dest (again)"),
+                ("xseg_apply_f2train_src",             "Apply XSeg Model to f2train source"),
+                #("xseg_apply_f2merge",                 "Apply XSeg Model to f2merge - Overwrites face detect masks"),
+                ("xseg_fetch",                         "Fetch f2train images that contain XSeg Polys"),
                 ("xseg_remove_mask_f2train",           "Remove XSeg Trained Mask from f2train"),
                 ("xseg_remove_polys_f2train",          "Remove XSeg Edited Polys from f2train"),
                 ("xseg_remove_mask_f2merged",          "Remove XSeg Trained Mask from f2merged"),
@@ -93,11 +97,11 @@ class Menu(object):
             ]
         if menu_name == 'train':
             self.options = [
-                ("pretrain_model",                     "Pre-Train SRC Model"),
                 ("copy_pretrained_model",              "Copy Pre-trained src model"),
                 ("train_sequenced",                    "Train Sequenced"),
                 ("train_delayed",                      "Train after delay"),
                 ("train_basic",                        "Train Basic or New"),
+                ("pretrain_model",                     "Pre-Train SRC Model"),
             ]
         if menu_name == 'utils':
             self.options = [
@@ -107,6 +111,7 @@ class Menu(object):
                 ("set_model_label",                    "Set model label"),
                 ("zip_all_faces",                      "Zip all faces"),
                 ("unzip_all_faces",                    "Unzip all faces"),
+                #("xseg_apply_f2merge_samples",         "Apply XSeg Model to f2merge samples"),
             ]
         if menu_name == 'model_type':
             self.options = [
@@ -367,7 +372,12 @@ def extract_frames(configs):
     ffmpeg_path = os.path.join(configs['bindir'], 'ffmpeg', 'ffmpeg.exe')
     source_img_path = configs['1_source']
     source_img_output = os.path.join(source_img_path, configs['title'] + r'_%5d.png')
-    cmdstr = '%s -threads 11 -i "%s" "%s"' %(
+    #cmdstr = '%s -threads 11 -i "%s" "%s"' %(
+    #    ffmpeg_path,
+    #    configs['input_video'],
+    #    source_img_output
+    #)
+    cmdstr = '%s -threads 0 -i "%s" "%s"' %(
         ffmpeg_path,
         configs['input_video'],
         source_img_output
@@ -585,6 +595,10 @@ def f2train_sort_absdiff(configs):
     sort(configs, configs['f2train_dst'], 'absdiff')
 
 
+def f2train_sort_rect_size(configs):
+    sort(configs, configs['f2train_dst'], 'face-source-rect-size')
+
+
 def f2train_decimate(configs):
     cmd = '%s %s %s %s' %(
         configs['python_exe'],
@@ -644,7 +658,17 @@ def xseg_train(configs):
     rc = shell_command(cmd)
 
 
-def xseg_apply_f2train(configs):
+def xseg_apply_f2train_src(configs):
+    cmd = '%s %s xseg apply --input-dir %s --model-dir %s' %(
+        configs['python_exe'],
+        configs['dfl_main'],
+        configs['f2train_src'],
+        os.path.join(configs['3_model']),
+    )
+    rc = shell_command(cmd)
+
+
+def xseg_apply_f2train_dst(configs):
     cmd = '%s %s xseg apply --input-dir %s --model-dir %s' %(
         configs['python_exe'],
         configs['dfl_main'],
@@ -660,6 +684,15 @@ def xseg_apply_f2merge(configs):
         configs['dfl_main'],
         configs['f2merge'],
         os.path.join(configs['3_model']),
+    )
+    rc = shell_command(cmd)
+
+
+def xseg_fetch(configs):
+    cmd = '%s %s xseg fetch --input-dir %s ' %(
+        configs['python_exe'],
+        configs['dfl_main'],
+        configs['f2train_dst'],
     )
     rc = shell_command(cmd)
 
@@ -712,27 +745,53 @@ def pretrain_model(configs):
     rc = shell_command(cmd)
     
 
+def copy_pretrained_xseg_model(configs):
+    copy_from = os.path.join(configs['pretrain_src'], '3_model')
+    copy_to = os.path.join(configs['3_model'])
+    if not os.path.exists(copy_to):
+        print("Making directory: %s" %copy_to)
+        os.makedirs(copy_to, exist_ok=True)
+    print("Copy pretrained XSeg model")
+    print("  from: %s" %copy_from)
+    print("  to  : %s" %copy_to)
+    for filename in os.listdir(copy_from):
+        if re.search(r'^XSeg_.*', filename) is None:
+            continue
+        src_path = os.path.join(copy_from, filename)
+        dst_path = os.path.join(copy_to, filename)
+        #print("  filename=%s" %(filename))
+        print("%s to %s" %(src_path, dst_path))
+        if os.path.isfile(dst_path):
+            print("  Model file exists, removing: %s" %dst_path)
+            os.remove(dst_path)
+        shutil.copy2(src_path, dst_path)
+
+
 def copy_pretrained_model(configs):
     copy_from = os.path.join(configs['pretrain_src'], '3_model', configs['model_type'])
     copy_to = os.path.join(configs['3_model'], configs['model_type'])
-    recursive_copy(
-        copy_from,
-        copy_to
-    )
+    recursive_copy(copy_from, copy_to)
 
     # Rename pretrain model to src label
     oldname = 'pretrain'
     newname = configs['model_label']
+    skipped = False
     print("Renaming pretraining model to src label: %s -> %s" %(oldname, newname))
     for filepath in pathex.get_paths(copy_to):
         filepath_name = filepath.name
+        if re.search(r'^%s_.*' %oldname, filepath_name) is None:
+            continue
         model_filename, remain_filename = filepath_name.split('_', 1)
         if model_filename == oldname:
             new_filepath = filepath.parent / ( newname + '_' + remain_filename )
             if new_filepath.exists():
-                print("Model file exists, skipping: %s" %new_filepath)
+                print("  Model file exists, skipping: %s" %new_filepath)
+                skipped = True
                 continue
             filepath.rename(new_filepath)
+
+    if skipped:
+        junk = input("Some files skipped")
 
     # Disable pretraining
     model_file = Path("%s\\%s_%s_data.dat" %(copy_to, newname, configs['model_type']))
@@ -763,6 +822,8 @@ def train_delayed(configs):
 
 
 def train_sequenced(configs):
+    print("# Reminder: ")
+    print("# * xseg-model must be applied to f2train before training")
     cmd = '%s %s train --training-data-src-dir %s --training-data-dst-dir %s --model-dir %s --model-label %s --model %s --config %s' %(
         configs['python_exe'],
         os.path.join(configs['dfl_root'], 'main-sequenced.py'),
@@ -891,6 +952,16 @@ def create_samples(configs):
     rc = shell_command(cmd)
 
 
+def xseg_apply_f2merge_samples(configs):
+    cmd = '%s %s xseg apply --input-dir %s --model-dir %s' %(
+        configs['python_exe'],
+        configs['dfl_main'],
+        os.path.join(configs['f2merge'], 'merge_samples'),
+        os.path.join(configs['3_model']),
+    )
+    rc = shell_command(cmd)
+
+
 def merge_samples(configs):
     cmd = '%s %s merge --input-dir %s --aligned-dir %s --model-dir %s --model %s --output-dir %s --output-mask-dir %s' %(
         configs['python_exe'],
@@ -943,7 +1014,8 @@ def video(configs):
     ffmpeg_path = os.path.join(configs['bindir'], 'ffmpeg', 'ffmpeg.exe')
     fps = configs['video_info']['fps']
     source_img_path = configs['1_source']
-    source_imgs = os.path.join(configs['4_merged'], configs['model_type'], r'%5d.png')
+    #source_img_output = os.path.join(source_img_path, configs['title'] + r'_%5d.png')
+    source_imgs = os.path.join(configs['4_merged'], configs['model_type'], configs['title'] + r'_%5d.png')
     ts = time.strftime("%Y-%m-%d-%H.%M.%S", time.localtime())
     video_filename = '%s-%s-%s-%s--LOSS--%s.mp4' %(
         configs['title'],

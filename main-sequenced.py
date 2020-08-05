@@ -102,6 +102,15 @@ def get_args():
 
     return args
 
+def average_loss(loss_history, count):
+    """ Calculate the average loss value over the last x iterations """
+    total = 0.0
+    for x in loss_history[-count:]:
+        total += x[1]
+    average = total / count
+    return average
+        
+    
 if __name__ == "__main__":
 
     #$print("syargv: %s" %"\n  ".join(args))
@@ -166,6 +175,9 @@ if __name__ == "__main__":
         print("%-30s: %s" %("Current Iteration", model_data['iter']))
         target_iter = seq['target_iter']
         iter_step = seq['iter_step']
+        if 'loss_target' not in seq:
+            seq['loss_target'] = 0.0
+
         if iter_step > 0:
             step_target_iter = start_iter + iter_step
             print("%-30s: %s" %("Final target iteration", target_iter))
@@ -177,6 +189,11 @@ if __name__ == "__main__":
 
         print("%-30s: %s" %("Setting target iteration to", step_target_iter))
         if model_data['iter'] > target_iter:
+            continue
+
+        avg_loss = average_loss(model_data['loss_history'], 10)
+        if avg_loss <= seq['loss_target']:
+            print("Reached target loss, skipping to next sequence")
             continue
 
         while model_data['iter'] < target_iter:
@@ -217,11 +234,17 @@ if __name__ == "__main__":
                     step_target_iter = last_good_save + iter_step
                 else:
                     step_target_iter = target_iter
+                
             else:
                 # save a copy of the model
                 print("%-30s: %s" %("Saving model at iteration", model_data['iter']))
                 save_model(model_dir, step_target_iter)
                 last_good_save = step_target_iter
+
+                avg_loss = average_loss(model_data['loss_history'], 10)
+                if avg_loss < seq['loss_target']:
+                    # Loss is acceptable even if the sequence has not reached target iteration
+                    break
 
                 # Reset starting point before incrementing the target iteration
                 start_iter = step_target_iter
